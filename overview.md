@@ -81,6 +81,22 @@
   返回 28 行带时间轴 LRC ✓；M4A（无元数据）载入正常、乱串歌名安静失败 ✓；
   最暗夜景提示词出图平均亮度 97/255 ✓。
 
+## R14：商业头部 + 删除专业建议 + 中英双语（2026-10-24 下午）
+
+- **商业 Header**：品牌区（SonicFrame + AI Music Video Studio 副标）、导航栏
+  （Song/Lyrics/Style/Export/FAQ 锚点跳转，FAQ 打开指南弹窗）、进度指示保留、
+  语言切换按钮 + Guide + Export MV；<1180px 隐藏导航与进度。
+- **删除「专业建议」**：index.html 按钮+notesDialog 整块、app.js 绑定与 els 引用。
+- **双语 i18n（默认英文）**：新增 assets/i18n.js——85 处 data-i18n 静态标记
+  （中文为源，EN 词典映射）、data-i18n-ph 占位符、title/lang 切换、
+  动态文案 tr()（toast 按 ' · ' 分段 + 正则规则 + 《》→引号）、
+  主题名/场景名/画布空闲演示文案/品牌角标全部跟随语言；
+  localStorage 记忆，切换后 __sfLangRefresh 重写状态类文案。
+- **部署**：github.com/moonhawk2022/sonicframe（GCM OAuth 授权），
+  GitHub Pages 已上线：https://moonhawk2022.github.io/sonicframe/
+- **实测**（本地 + 线上双跑 .tmp/hdr14*.js）：默认 EN 全部生效、切中文即时生效且持久化、
+  专业建议已移除、FAQ/Guide 弹窗正常、demo toast 英文、0 JS 报错。
+
 ## 文件结构
 
 ```
