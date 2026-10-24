@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-i18n-root data-page-node-id="MRIyiP6IbFbZBWvBUBkEuk">
+<head data-page-node-id="vpBsyBzEZaX1HuQrL5DprU">
+<meta charset="utf-8" data-page-node-id="liVPHGAfxSbUADHhddQXhc" />
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="1enmpdwD7OTTRjQrFt00FP" />
+<title>音帧 SonicFrame · 上传歌曲与歌词，自动生成 MV</title>
+<meta name="description" content="上传 MP3 与歌词，自动生成带滚动歌词、音频律动柱与背景图的音乐视频。支持 16:9 / 9:16 / 1:1 / 4:5，全程本地渲染，文件不上传服务器。" data-page-node-id="2LDfCwu5IqEWp0OinuH3tD" />
+<meta name="theme-color" content="#f6f6f9" data-page-node-id="X9IYqoAhjeAq9d42yGWvHk" />
+<meta property="og:title" content="音帧 SonicFrame · AI 音乐视频生成器" data-page-node-id="7ElA5lIlNle6CwXsDHvVXi" />
+<meta property="og:description" content="一首歌 + 一段歌词，30 秒做出可发布的 MV。" data-page-node-id="vZzbqud2i2BvYmnDHl541O" />
+<link rel="stylesheet" href="assets/styles.css" data-page-node-id="eSzhwKGGfDgG7tRQw9cLfI" />
+</head>
+<body data-page-node-id="Ddi9sWxOrTIcIFOhiQhdZP">
+
+<header class="topbar" data-page-node-id="0tHs4TwHiivzG2hiH15gMl">
+  <a class="brand" href="./" aria-label="音帧 SonicFrame 首页" data-page-node-id="yVGp620OuKKp7PSMlMMv4B">
+    <span class="brand__mark" aria-hidden="true" data-page-node-id="Q0CFP8lImvIW85GpwDhcwg">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" data-page-node-id="1stkgZ0EaUjJQKWFUprATK">
+        <path d="M5 14v-4" data-page-node-id="CXnB4cfA0ErVXjjjwbqAUX" /><path d="M9.5 18V6" data-page-node-id="KQZLHZtNCNiGG61T0FiX9h" /><path d="M14 15.5v-7" data-page-node-id="m80015TktN1SkTAPsx2hRb" /><path d="M18.5 13v-2" data-page-node-id="3GcAAK5CrAHNjFCwg8IoIM" />
+      </svg>
+    </span>
+    <span class="brand__text"><strong data-i18n="brandName">音帧</strong><em data-i18n="brandSub">SonicFrame</em></span>
+  </a>
+
+  <nav class="topbar__nav" aria-label="主导航">
+    <a href="#step-song" data-i18n="navSong">歌曲</a>
+    <a href="#step-lyrics" data-i18n="navLyrics">歌词</a>
+    <a href="#step-style" data-i18n="navStyle">画面</a>
+    <a href="#export-bar" data-i18n="navExport">导出</a>
+    <a href="#" id="navFaq" data-i18n="navFaq">常见问题</a>
+  </nav>
+
+  <ol class="flow" aria-label="制作进度" data-page-node-id="fKDa0MF4cowvqIkPMyAKj3">
+    <li id="flowAudio" data-page-node-id="ycjTTnyAnBlJtwinTaGNvV"><i data-page-node-id="zZXgo9K81yTr7gXkuv65ZN">1</i><span data-i18n="flowAudio">歌曲</span></li>
+    <li id="flowLyric" data-page-node-id="3V9KyvdIzZD9HzwFRneuZ7"><i data-page-node-id="jCJnD2ByutnxfU9pzek5H2">2</i><span data-i18n="flowLyric">歌词</span></li>
+    <li id="flowStyle" data-page-node-id="jilOmWgPSpiDWU49Wt7prE"><i data-page-node-id="VlGqtCYaDfhUHgcOT9VQ25">3</i><span data-i18n="flowStyle">画面</span></li>
+  </ol>
+
+  <div class="topbar__actions" data-page-node-id="8g2GGTgDk855EBAPMBp7MA">
+    <button class="lang-btn" id="btnLang" type="button" aria-label="切换语言 / Switch language" title="切换语言 / Switch language">EN</button>
+    <button class="ghost-btn" id="btnHelp" type="button" data-page-node-id="Ts0fu87QmlkIs3W3XHDiT7" data-i18n="btnHelp">使用指南</button>
+    <button class="primary-btn" id="btnTopExport" type="button" data-page-node-id="30DvASt279tAvxC2gU9IUy" data-i18n="btnTopExport">导出 MV</button>
+  </div>
+</header>
+
+<main class="layout" data-page-node-id="M427juX7hk2lQkZfnf0Ibc">
+  <!-- ============ 左侧设置面板 ============ -->
+  <section class="panel" aria-label="生成设置" data-page-node-id="CPQtIQPDvNa1kZMDRKGqzC">
+
+    <!-- Step 1 -->
+    <div class="step" id="step-song" data-page-node-id="Ov86hAmb7tIAk0f1Jkm8OZ">
+      <div class="step__head" data-page-node-id="FK8qJZlDLTMBtTQRXUDDWz">
+        <span class="step__num" data-page-node-id="6EElhbnE34mQxGK4z9ZqKd">1</span>
+        <h2 data-page-node-id="rWK2GB3fkKJDVP5hA9S4jk" data-i18n="s1Title">添加歌曲</h2>
+        <span class="step__badge" id="audioBadge" data-page-node-id="twTSzTEvGL8orqfCIdF1S4" data-i18n="bRequired">必填</span>
+      </div>
+
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="上传 MP3 音乐文件" data-page-node-id="DZq8ivWQWYjJA0FdtTcsEm">
+        <input type="file" id="fileInput" accept="audio/mpeg,audio/mp3,audio/wav,audio/x-m4a,audio/*" hidden data-page-node-id="a9oLbiErj7YzDOKpHYqACg" />
+        <svg class="dropzone__icon" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="rbnsxhGhNxPcpvYD2ppkKY">
+          <path d="M9 18V5l10-2v13" data-page-node-id="Wt6C0OcFQl52HWDbAC5Uat" /><circle cx="6" cy="18" r="3" data-page-node-id="Q7yhzgOeHeoS4TQxLwGJYp" /><circle cx="16" cy="16" r="3" data-page-node-id="f8hPizoKj12McTr2bQezqh" />
+        </svg>
+        <p class="dropzone__title" data-page-node-id="O6vtz7kzxtUQd1QH9Pss0a" data-i18n="dzTitle">拖入音乐文件，或点击选择</p>
+        <p class="dropzone__sub" data-page-node-id="JzvGrsEo4y6uhobVqoFCDF" data-i18n="dzSub">MP3 / WAV / M4A / FLAC / OGG · 自动读取歌名、封面与歌词</p>
+      </div>
+
+      <div class="track" id="trackCard" hidden data-page-node-id="XFmtqo3C6FMjdI8VojmMaK">
+        <div class="track__cover" id="trackCoverBox" data-page-node-id="Hzu2u7NehPC42ewFHjIAhq">
+          <img id="trackCover" alt="歌曲封面" hidden data-page-node-id="uAbEBHVKUeO37F5mEGH05q" />
+          <span class="track__coverFallback" id="trackCoverFallback" data-page-node-id="cCekETUo1BJMRrt8tqJ98q">♪</span>
+        </div>
+        <div class="track__meta" data-page-node-id="6PwBBx0OkieXRX5Ecb4o4z">
+          <strong id="trackName" data-page-node-id="7g8xA3VKk3ZxtbFUDDE2ZU" data-i18n="bUntitled">未命名</strong>
+          <span id="trackInfo" data-page-node-id="xUUZkrzcZXOazF4GNCsAwL">--:--</span>
+        </div>
+        <button class="link-btn" id="btnReplace" type="button" data-page-node-id="836D1ZqIb1KmQaggrzLXja" data-i18n="btnReplace">更换</button>
+      </div>
+
+      <div class="field-grid" data-page-node-id="2Vl4ep7lkF8XLq0OnOEZkl">
+        <label class="field" data-page-node-id="IE42qbm9NSeWOLiyfjknbt"><span data-page-node-id="aqSpchRO79Nu36f2H47DWG" data-i18n="fTitle">歌曲名称</span>
+          <input id="titleInput" type="text" placeholder="自动读取，可修改" data-i18n-ph="phAuto" maxlength="40" data-page-node-id="7vyUyKyDGnChwPM2J9bz5T" />
+        </label>
+        <label class="field" data-page-node-id="GTrdA7uxamWu4ET6u8yee8"><span data-page-node-id="qHESbCDeWOWLZUUTZmZkFm" data-i18n="fArtist">歌手</span>
+          <input id="artistInput" type="text" placeholder="自动读取，可修改" data-i18n-ph="phAuto" maxlength="30" data-page-node-id="z4xAmrE5Q8UjdS9aKVbWkF" />
+        </label>
+      </div>
+
+      <button class="ghost-btn ghost-btn--wide" id="btnDemo" type="button" data-page-node-id="lzDwjC4nvPl68BbuDFCWXy" data-i18n="btnDemo">没有素材？载入示例体验</button>
+      <p class="hint hint--mini" data-page-node-id="s6n3cIT7ZSi82QTsQ9EA5Q" data-i18n="privacyHint">音频只在你的浏览器里解码，不会上传到任何服务器。</p>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step" id="step-lyrics" data-page-node-id="ytElDoQnG8sXzirkvvuJSC">
+      <div class="step__head" data-page-node-id="g8ODjGD5n7MOdjEDVmIhvO">
+        <span class="step__num" data-page-node-id="fFdiEQoYOvCnmzo0icAjWf">2</span>
+        <h2 data-page-node-id="adYjiDfjTTM1diywQ9nAg2" data-i18n="s2Title">添加歌词</h2>
+        <span class="step__badge" id="lyricBadge" data-page-node-id="dXrNHmhSYt6YidLJFW7xrh" data-i18n="bAligned">自动对齐</span>
+      </div>
+      <p class="step__desc" data-page-node-id="BAERaQyA5vDWfo6t9GdLQA" data-i18n="s2Desc">导入歌曲后自动读取<b>文件内嵌歌词</b>，没有就联网匹配（按歌名+时长）；也可以直接粘贴歌词自动排时间轴。发现整体偏早/偏晚，用“时间微调”推一下。</p>
+
+      <textarea id="lyricsText" rows="7" spellcheck="false"
+        placeholder="[00:12.00]第一句歌词&#10;[00:16.50]第二句歌词&#10;&#10;也可以直接粘贴没有时间戳的纯文本歌词" data-i18n-ph="phLyrics"></textarea>
+
+      <p class="hint hint--mini" id="lyricCleanHint" hidden></p>
+
+      <div class="row row--tight" data-page-node-id="SVyWBFEwWmvHwGu5sRv8Ip">
+        <button class="ghost-btn" id="btnLyricOnline" type="button" data-i18n="btnLyricOnline">联网找歌词</button>
+        <button class="ghost-btn" id="btnLyricFile" type="button" data-page-node-id="a8yGTSu63TpACEgMqzFlbh" data-i18n="btnLyricFile">上传 .lrc / .txt</button>
+        <input type="file" id="lyricFile" accept=".lrc,.txt,text/plain" hidden data-page-node-id="VCM1YqZZE9lrYW1VehOboY" />
+        <button class="ghost-btn" id="btnLyricClear" type="button" data-page-node-id="FDFTXRN1DgnROgGK7zAAsz" data-i18n="btnClear">清空</button>
+      </div>
+
+      <label class="field field--range" data-page-node-id="3FhvFYgY4j1weZDdU2D3RD">
+        <span data-page-node-id="Gk87FI7Bc3k3e098HEYJ8r"><i data-i18n="offsetLabel" style="font-style:normal">整体时间微调</i> <b id="offsetVal" data-page-node-id="FlgrK6CmGb0ksBi5CepYcz">0.0s</b></span>
+        <input id="offsetRange" type="range" min="-3" max="3" step="0.1" value="0" data-page-node-id="DnUKUhuFvtpY0rqbxslOXj" />
+        <small class="hint hint--mini" data-page-node-id="eTlrTSDgg9lsDNRpHdZZcz" data-i18n="offsetHint">歌词比音乐早出现就调“+”，晚出现就调“−”。</small>
+      </label>
+
+      <div class="lyric-list" id="lyricList" hidden data-page-node-id="zO50ZIpvDroHXxO3c1EBOB"></div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step" id="step-style" data-page-node-id="jn2ND6lZco1Cx3bnOTwgJq">
+      <div class="step__head" data-page-node-id="KrWIY7OpSnA62xV4SFboVy">
+        <span class="step__num" data-page-node-id="NoVAp8S77zFwC0CQ59d3RU">3</span>
+        <h2 data-page-node-id="Il8glIcTHHsi0JyRGMkPKN" data-i18n="s3Title">画面风格</h2>
+      </div>
+
+      <div class="field" data-page-node-id="GUwzpRpDOUsnwU9ePFz6Pk">
+        <span data-page-node-id="aexhTrnUhovDdrPrrUPmpC" data-i18n="fRatio">视频比例</span>
+        <div class="seg" id="ratioGroup" role="group" aria-label="视频比例" data-page-node-id="gKEksfLvWlvv5uASqYw2Ap">
+          <button class="seg__btn is-active" data-ratio="16:9" type="button" data-page-node-id="wQfy0fNDbU5EUZplF06ib3">16:9<small data-page-node-id="tGkCiBPDoVkCMLnsfUeWjG" data-i18n="rLand">横屏</small></button>
+          <button class="seg__btn" data-ratio="9:16" type="button" data-page-node-id="Vz91FSh6wQMFftbyPWwEou">9:16<small data-page-node-id="x8iKzuPYCrrqpurb2T83kh" data-i18n="rPort">竖屏</small></button>
+          <button class="seg__btn" data-ratio="1:1" type="button" data-page-node-id="SsPo6d2zOAF5CKpzCS6F9F">1:1<small data-page-node-id="okXQH90FpthhVpVdSPmYrz" data-i18n="rSq">方形</small></button>
+          <button class="seg__btn" data-ratio="4:5" type="button" data-page-node-id="tiv8HpYUasp7AxBbOyQNTj">4:5<small data-page-node-id="we3DCh9zQalzmHC3ewoTv1" data-i18n="r45">小红书</small></button>
+        </div>
+      </div>
+
+      <div class="field" data-page-node-id="BhpwAnwsdGSCOaFfeoJHGB">
+        <span data-page-node-id="URADCAziuc6ZfACkG9J51B" data-i18n="fBg">背景</span>
+        <div class="seg seg--sm seg--4" id="bgGroup" role="group" aria-label="背景来源" data-page-node-id="RFqvNf0LUuJBKgLctVdg54">
+          <button class="seg__btn is-active" data-bg="cover" type="button" data-page-node-id="gJITvQv2FIEo8q3ZpJYtgm" data-i18n="bgCover">歌曲封面</button>
+          <button class="seg__btn" data-bg="ai" type="button" data-page-node-id="vYF3D6NaRBB74NF2RGoK2k" data-i18n="bgAi">AI 背景</button>
+          <button class="seg__btn" data-bg="image" type="button" data-page-node-id="U5wN0knCHIkiPLadtlFrl4" data-i18n="bgImage">自定义图片</button>
+          <button class="seg__btn" data-bg="gradient" type="button" data-page-node-id="bg-gradient-btn" data-i18n="bgGrad">渐变主题</button>
+        </div>
+
+        <div class="scene-panel" id="scenePanel" hidden>
+          <div class="scene-panel__head">
+            <span class="scene-panel__dot" aria-hidden="true"></span>
+            <strong id="sceneName" data-i18n="bPainting">AI 绘图中…</strong>
+            <span class="scene-panel__tags" id="sceneTags"></span>
+          </div>
+          <div class="field">
+            <span data-i18n="sceneType">场景类型</span>
+            <div class="seg seg--sm seg--4" id="sceneTypeGroup" role="group" aria-label="AI 场景类型">
+              <button class="seg__btn is-active" data-stype="auto" type="button" data-i18n="stAuto">自动</button>
+              <button class="seg__btn" data-stype="landscape" type="button" data-i18n="stLand">风景</button>
+              <button class="seg__btn" data-stype="people" type="button" data-i18n="stPeople">人物</button>
+              <button class="seg__btn" data-stype="city" type="button" data-i18n="stCity">城市</button>
+            </div>
+          </div>
+          <div class="row row--tight">
+            <button class="ghost-btn" id="btnSceneGen" type="button" data-i18n="btnSceneGen">↻ 重新生成</button>
+            <button class="ghost-btn" id="btnSceneSave" type="button" data-i18n="btnSceneSave">保存这张图</button>
+          </div>
+          <p class="hint hint--mini" data-i18n="sceneHint">按歌词自动在「风景 / 人物 / 城市风景」三类场景里归类绘制（也可手动指定），提示词带专辑封面级画质引导并根据曲风自动匹配风格（古风/说唱/电音/民谣/摇滚），由 pollinations.ai 免费生成（约 10~60 秒一张，每 45 秒限 1 张，自动排队）；修改歌词后背景自动跟着换。人物类统一画背影/剪影，更有故事感。</p>
+        </div>
+        <div class="bg-upload" id="bgUpload" hidden data-page-node-id="56Ol2HEUXrDmuqPE2S7Fch">
+          <input type="file" id="bgFile" accept="image/*" hidden data-page-node-id="bxRGugl77435YtlOXHjbqD" />
+          <button class="ghost-btn" id="btnBgPick" type="button" data-page-node-id="I1ZBTpZjov92oXB0TjgGj7" data-i18n="btnBgPick">选择背景图片</button>
+          <span class="bg-upload__name" id="bgName" data-page-node-id="Sy1qxPKYhH31YzeFcw4OE8" data-i18n="bNone">未选择</span>
+        </div>
+      </div>
+
+      <div class="field" data-page-node-id="ap1ktJgLRvFu6O4HhVIc6r">
+        <span data-page-node-id="mj1Dv0Xu91uRexaqaX3BoJ" data-i18n="fTheme">配色风格</span>
+        <div class="themes" id="themeGroup" role="group" aria-label="配色风格" data-page-node-id="rR9aOJXLobR4YmNK8yebS4"></div>
+      </div>
+
+      <div class="toggles" data-page-node-id="kFCMWAvZRJPwpd1zv4k6xo">
+        <label class="switch" data-page-node-id="uJQ683aDZZJnPkggWcnt0j"><input type="checkbox" id="optTitle" checked data-page-node-id="Ieds6onaOuDEF4cZCvrJQV" /><span data-page-node-id="F454HnDNQsgWAGZRqnZq5v" data-i18n="optTitle">歌名与歌手</span></label>
+        <label class="switch" data-page-node-id="VOJLQLrAI68wutNu184xG3"><input type="checkbox" id="optBars" checked data-page-node-id="cWfpGw6QZmPWcd6gkDOq9e" /><span data-page-node-id="FvaMAjkiJ2nZyU6tzy1TFt" data-i18n="optBars">音频律动柱</span></label>
+        <label class="switch" data-page-node-id="NkIDycUGbAC0X1QD1mFyLd"><input type="checkbox" id="optProgress" checked data-page-node-id="WiDHM4PEWORDQLPSFH18vH" /><span data-page-node-id="hXNrSKnUB68pPJGSkDkGDh" data-i18n="optProgress">底部进度条</span></label>
+        <label class="switch" data-page-node-id="ZXc24aCJ5SxE3J1HsVhZCf"><input type="checkbox" id="optBrand" checked data-page-node-id="rNR3GhFAFRn5Bdgz1V6AMX" /><span data-page-node-id="CkWintF3Q66ND5dPYwsAF4" data-i18n="optBrand">品牌角标</span></label>
+      </div>
+
+      <label class="field field--range" data-page-node-id="M5JUDRGwvE6uvDHkbnPUa7">
+        <span data-page-node-id="4fOA0V0iORAp8uNXsEaKm3"><i data-i18n="fontLabel" style="font-style:normal">歌词字号</i> <b id="fontVal" data-page-node-id="hLWKQHVmPiFYeUUbaxMkDj">100%</b></span>
+        <input id="fontRange" type="range" min="80" max="130" step="5" value="100" data-page-node-id="Kr9LsyUyjLErqBSAn6CWIA" />
+      </label>
+    </div>
+  </section>
+
+  <!-- ============ 右侧预览 / 导出 ============ -->
+  <section class="stage" aria-label="MV 预览与导出" data-page-node-id="KbSy05UbcwyaOotYcImTTA">
+    <div class="stage__head" data-page-node-id="FtiASLWrGE7IcTxxfGYs88">
+      <h2 data-page-node-id="bLCG9yarQLJhslWBlJB6H5" data-i18n="preview">预览</h2>
+      <span class="badge" id="stageBadge" data-page-node-id="wSE4wYxRfyhBBb8NXfYk9s">16:9 · 1080p</span>
+      <span class="badge badge--soft" id="stageMode" data-page-node-id="JDhxVeEAAeZA2bljig8pEw" data-i18n="bDemoPreview">示例预览</span>
+    </div>
+
+    <div class="canvas-wrap" data-page-node-id="Ylvsxpcj2B3sC4kDacezcr">
+      <canvas id="mv" width="960" height="540" aria-label="MV 预览画面" data-page-node-id="Kll2O7dCBTPYnlbfOduNfs"></canvas>
+    </div>
+
+    <div class="transport" data-page-node-id="z5FGIhTmnwpSxEO5Qdnsjf">
+      <button class="play-btn" id="btnPlay" type="button" aria-label="播放" data-page-node-id="s5aAVBLQQwwWHcsGLddbvp">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true" data-page-node-id="7FLc31IRWmKqgA3XdBHljW"><path id="playIcon" d="M8 5v14l11-7z" data-page-node-id="1bVpkqHtjVpPK5gmn8QsNX" /></svg>
+      </button>
+      <span class="time" id="timeNow" data-page-node-id="5vbZVTi9n78sRLbZIt0iyy">00:00</span>
+      <div class="seek-wrap" id="seekWrap" data-page-node-id="426CF8UNAwEqeeOYRYRCJq">
+        <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="播放进度" data-page-node-id="jMLuuBGTqFBbpeiE0MepdY" />
+      </div>
+      <span class="time" id="timeTotal" data-page-node-id="gKlBwi5AQOVAr7onvKUwCJ">00:00</span>
+    </div>
+
+    <div class="export-bar" id="export-bar" data-page-node-id="ychPYYTT5siY0iwZDGeGBe">
+      <div class="export-bar__row" data-page-node-id="0FoRsIF12YUpBorMNoAvHx">
+        <label class="field-inline" data-page-node-id="IKsvpCtpR07WQsgMCo4MlY"><i data-i18n="quality" style="font-style:normal">清晰度</i>
+          <select id="resSelect" data-page-node-id="3NDpHPXxIDylSDnnGFd9rg">
+            <option value="1080" data-page-node-id="i25qKUNJewYkbML6TI0NAj">1080p</option>
+            <option value="720" data-page-node-id="frE64GtyS8KbKKViWMNqO8">720p</option>
+            <option value="540" data-page-node-id="res-540" data-i18n="res540">540p（最小）</option>
+          </select>
+        </label>
+        <label class="field-inline"><i data-i18n="sizeLabel" style="font-style:normal">体积</i>
+          <select id="sizeSelect">
+            <option value="auto" data-i18n="sizeAuto">≤10MB（推荐，适合短视频）</option>
+            <option value="30">≤ 30MB</option>
+            <option value="60">≤ 60MB</option>
+            <option value="max" data-i18n="sizeMax">高画质</option>
+          </select>
+        </label>
+        <button class="primary-btn" id="btnExport" type="button" data-page-node-id="j1GlGHb5prmFbuv2bawSv8" data-i18n="btnExport">生成 MV 视频</button>
+        <button class="ghost-btn" id="btnPng" type="button" data-page-node-id="RhKPlxfCHMFnaCTLBO3cOh" data-i18n="btnPng">导出当前画面</button>
+        <button class="ghost-btn ghost-btn--danger" id="btnCancel" type="button" hidden data-page-node-id="H35QDbvvM76jEJJSHygu5R" data-i18n="btnCancel">取消</button>
+      </div>
+
+      <label class="switch switch--rights" data-page-node-id="rightsSwitch">
+        <input type="checkbox" id="rightsOk" data-page-node-id="rightsOk" />
+        <span data-page-node-id="rightsText" data-i18n="rights">我确认对所用音乐与素材拥有合法使用权利，并已阅读<a href="https://www.workbuddy.cn" target="_blank" rel="noopener" style="color:inherit">服务条款</a>（内容仅本地处理，侵权投诉：support@sonicframe.app）</span>
+      </label>
+
+      <div class="progress" id="progressWrap" hidden data-page-node-id="VK3tmJa2bXECqOzpWo17rG">
+        <div class="progress__track" data-page-node-id="WPJMsoqE7amxofIALlk8nc"><div class="progress__bar" id="progressBar" data-page-node-id="jWQWeUdRTnPJdMBCFhlMZ1"></div></div>
+        <div class="progress__text" id="progressText" data-page-node-id="N4gE52L1LglfUOR0cNgjUs" data-i18n="bPreparing">准备中…</div>
+      </div>
+
+      <p class="hint" id="sizeHint" data-i18n="bSizeHint">预计文件大小 ≈ -- MB</p>
+      <p class="hint" id="exportHint" data-page-node-id="vyEp2ZB0Uxl7SS7EUpuiDd" data-i18n="exportHint">导出为离线逐帧渲染：画面每帧都精确生成，不会卡住，切窗口也不影响；耗时取决于电脑性能。</p>
+
+      <div class="result" id="resultCard" hidden data-page-node-id="kVFeUGDkwWO5NXDWMw95x8">
+        <video id="resultVideo" controls playsinline data-page-node-id="zs7hpgBI7PuDrOtFsYL693"></video>
+        <div class="result__meta" data-page-node-id="oVVFG8b8YAbhxTf0Cj8hh0">
+          <strong id="resultName" data-page-node-id="vJL83ISUoGE3QyuHaz6AWh">MV.mp4</strong>
+          <span id="resultSize" data-page-node-id="G4L2fGuTne0sT7MjST1TnA"></span>
+        </div>
+        <a class="primary-btn" id="downloadLink" download data-page-node-id="DWlRNmLIHiB0om9t8WyAQt" data-i18n="btnDownload">下载视频</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer" data-page-node-id="27V0sjm9BZkdt43rByoCm3">
+  <span data-page-node-id="Rlg8QGW7MtbHn2u3uCbefF" data-i18n="foot1">音帧 SonicFrame · 本地渲染原型</span>
+  <span data-page-node-id="PwcUqxNBkzv3YKglHiUFIH" data-i18n="foot2">浏览器内完成解码、渲染与录制，不上传文件</span>
+</footer>
+
+<!-- 使用指南 -->
+<dialog id="helpDialog" class="dialog" data-page-node-id="Ktxt5SwbHgHZp65qqBbXCb">
+  <form method="dialog" data-page-node-id="9gi1ukcFWnRoqJalCBfv8g"><button class="dialog__close" aria-label="关闭" data-page-node-id="94VJD82iAEforZSgIS2Eyh">×</button></form>
+  <h2 data-page-node-id="VPlkhnNOtx07nsMyealIBq" data-i18n="helpTitle">三步做出第一支 MV</h2>
+  <ol class="dialog__list" data-page-node-id="LImBDRMrOsrs9FSnMfpzuD">
+    <li data-page-node-id="ugcJDHrt1FUbynKMhY0D4Z" data-i18n="helpStep1"><b data-page-node-id="p8GP88FMd291fk48ydHKdg">加歌曲</b>：支持 MP3 / WAV / M4A / FLAC / OGG。会自动读取歌名、歌手、内嵌封面与<b>内嵌歌词</b>（网易云、QQ音乐下载的文件大多带）；并把音量标准化到 -14 LUFS。</li>
+    <li data-page-node-id="w07JTp39oTDOUWxIv2JYiB" data-i18n="helpStep2"><b data-page-node-id="5KXa85KfxNFzy9K9Mc0Gy">加歌词</b>：文件自带歌词自动填入；没有就<b>自动联网匹配</b>（按歌名+时长挑最接近的），也可点“联网找歌词”重试、粘贴纯文本或上传 LRC；发现整体偏早/偏晚，用“时间微调”推一下。</li>
+    <li data-page-node-id="6N2EWVUKkeqTEFCrM7ceay" data-i18n="helpStep3"><b data-page-node-id="ZW0k62DMpFdDRF8pB3JJNt">调画面</b>：选比例（抖音/Reels 用 9:16，B 站/YouTube 用 16:9），选配色，点“生成 MV 视频”。</li>
+  </ol>
+  <h3 data-page-node-id="ROmjnIu7Wf753By7ZTyRxD" data-i18n="helpFaq">常见问题</h3>
+  <dl class="dialog__faq" data-page-node-id="RYw4SEPAMNPoClxz4LcAHY">
+    <dt data-page-node-id="WsYkH6agrnEmsPXfClqgk5" data-i18n="faq1q">导出的视频能直接发抖音吗？</dt>
+    <dd data-page-node-id="ir8ozmH3fdxnpMK7mfv9Zt" data-i18n="faq1a">可以。默认导出 MP4（H.264 + AAC），抖音、视频号、小红书、B 站都直接支持。体积默认压到 10MB 以内（按歌曲时长自动算码率，必要时自动降清晰度），长歌选 ≤30MB / ≤60MB 更清晰。</dd>
+    <dt data-page-node-id="QqrX36dhXIYnv2qczviGjd" data-i18n="faq2q">导出卡顿 / 花屏？</dt>
+    <dd data-page-node-id="jPFKQncWnVWEIuqY2UpBbf" data-i18n="faq2a">实时录制对机器性能敏感。切到 720p、关闭其他占用显卡的标签页，并保持页面在前台。</dd>
+    <dt data-page-node-id="nJWjInjSQmlMU1cbp2UZwQ" data-i18n="faq3q">歌词对不上？</dt>
+    <dd data-page-node-id="Y4ccIpI2Pmcm3BlHDgGImd" data-i18n="faq3a">先确认是 LRC（带 [00:12.00] 时间戳）。纯文本只能按字数估算，长句多、节奏快的歌建议做 LRC。</dd>
+  </dl>
+</dialog>
+
+
+<div class="toast" id="toast" role="status" aria-live="polite" data-page-node-id="vRtEkCrIGcY5iO5rb76RvA"></div>
+
+<script src="assets/id3.js"></script>
+<script src="assets/lyrics.js"></script>
+<script src="assets/scene.js"></script>
+<script src="assets/renderer.js"></script>
+<script src="assets/mp4mux.js"></script>
+<script src="assets/sfexport.js"></script>
+<script src="assets/i18n.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
