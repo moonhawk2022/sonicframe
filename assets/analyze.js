@@ -266,6 +266,90 @@ window.SFAnalyzr = (function () {
       var loud = envSorted[Math.floor(envSorted.length * 0.9)] || 1e-6;
       var dynDb = 20 * Math.log10(loud / quiet);
 
+      /* --- 4b. 连续音高轨迹（mid 人声轨）→ 唱功技巧 --- */
+      var pWin = 2048, pHop = 1024;
+      var pFrames = Math.floor((sigMid.length - pWin) / pHop);
+      var pF0 = new Float32Array(pFrames);      // 0 = unvoiced
+      var pH2H1 = new Float32Array(pFrames);    // 2次谐波/基波能量比
+      var hannP = new Float32Array(pWin);
+      for (var hp = 0; hp < pWin; hp++) hannP[hp] = 0.5 - 0.5 * Math.cos(2 * Math.PI * hp / (pWin - 1));
+      var reP = new Float32Array(pWin), imP = new Float32Array(pWin);
+      var binHz = sr / pWin;
+      var bMin = Math.ceil(80 / binHz), bMax = Math.min(Math.floor(1200 / binHz), pWin / 2 - 1);
+      for (var pf = 0; pf < pFrames; pf++) {
+        var po = pf * pHop;
+        for (var pk2 = 0; pk2 < pWin; pk2++) { reP[pk2] = sigMid[po + pk2] * hannP[pk2]; imP[pk2] = 0; }
+        fft(reP, imP);
+        var pmMax = 0, pmBest = 0, pmSum = 0, pmCnt = 0;
+        for (var pb = bMin; pb <= bMax; pb++) {
+          var pm = reP[pb] * reP[pb] + imP[pb] * imP[pb];
+          if (pm > pmMax) { pmMax = pm; pmBest = pb; }
+          pmSum += pm; pmCnt++;
+        }
+        if (pmBest > 0 && pmCnt > 0 && pmMax > (pmSum / pmCnt) * 10) { // 功率域阈值（实验校准：兼顾鼓点鲁棒与人声检出）
+          pF0[pf] = pmBest * binHz;
+          var h1b = pmBest, h2b = Math.min(pmBest * 2, pWin / 2 - 1);
+          var h1 = reP[h1b] * reP[h1b] + imP[h1b] * imP[h1b];
+          var h2 = reP[h2b] * reP[h2b] + imP[h2b] * imP[h2b];
+          pH2H1[pf] = h1 > 0 ? h2 / h1 : 1;
+        }
+      }
+      /* 声部中位数（覆盖旧估计） */
+      var voicedP = [];
+      for (var pv = 0; pv < pFrames; pv++) if (pF0[pv] >= 120) voicedP.push(pF0[pv]);
+      var voicedRatioP = pFrames > 0 ? voicedP.length / pFrames : 0;
+      if (voicedP.length > 8) {
+        var vpS = voicedP.slice().sort(function (x, y) { return x - y; });
+        medianF0 = vpS[Math.floor(vpS.length * 0.5)];
+        var v25 = vpS[Math.floor(vpS.length * 0.1)];
+        var v75 = vpS[Math.floor(vpS.length * 0.9)];
+        rangeSemi = v25 > 0 ? Math.round(12 * Math.log2(v75 / v25)) : 0;
+      }
+      /* 转音/换声区：相邻有声帧音高跳变 >5 半音（0.5s 内合并） */
+      var flips = 0, lastFlipT = -1;
+      var pSec = pHop / sr;
+      for (var pj = 2; pj < pFrames - 3; pj++) {
+        if (pF0[pj] >= 120 && pF0[pj - 1] >= 120) {
+          var dSt = Math.abs(12 * Math.log2(pF0[pj] / pF0[pj - 1]));
+          /* 需在新音高上保持 ≥3 帧，排除八度谐波误检 */
+          if (dSt > 5) {
+            var hold = true;
+            for (var hk = 1; hk <= 3; hk++) {
+              if (!(pF0[pj + hk] >= 120 && Math.abs(12 * Math.log2(pF0[pj + hk] / pF0[pj])) < 2)) { hold = false; break; }
+            }
+            if (hold) {
+              var tNow = pj * pSec;
+              if (tNow - lastFlipT > 0.5) flips++;
+              lastFlipT = tNow;
+            }
+          }
+        }
+      }
+      var flipsPerMin = dur > 0 ? Math.round(flips / dur * 60) : 0;
+      /* 假声：音高比中位高 ≥7 半音 且 泛音贫乏（H2/H1 < 0.6） */
+      var highFrames = 0, falseFrames = 0;
+      var medF = medianF0 > 0 ? medianF0 * Math.pow(2, 7 / 12) : 0;
+      for (var pf2 = 0; pf2 < pFrames; pf2++) {
+        if (pF0[pf2] >= 120 && medF > 0 && pF0[pf2] >= medF) {
+          highFrames++;
+          if (pH2H1[pf2] < 0.6) falseFrames++;
+        }
+      }
+      var falsettoPct = highFrames > 10 ? Math.round(falseFrames / highFrames * 100) : 0;
+
+      /* --- 4c. 节奏律动：onset 相位 vs 节拍网格 → 正拍/切分 --- */
+      var beatSec = bestBpm > 0 ? 60 / bestBpm : 0.5;
+      var onBeat = 0, offHalf = 0, onsetsTotal = 0;
+      for (var op = 1; op < fFrames - 1; op++) {
+        if (onset[op] > onset[op - 1] && onset[op] >= onset[op + 1] && onset[op] > onsetAvg * 2) {
+          onsetsTotal++;
+          var phase = (op * fHop / sr / beatSec) % 1;
+          if (phase < 0.12 || phase > 0.88) onBeat++;
+          else if (phase > 0.38 && phase < 0.62) offHalf++;
+        }
+      }
+      var offbeatPct = onsetsTotal > 0 ? Math.round(offHalf / onsetsTotal * 100) : 0;
+
       /* --- 5. 主副歌结构：2 秒窗响度分层 --- */
       var wLen = sr * 2, wCount = Math.floor(sig.length / wLen);
       var wRms = [];
@@ -302,7 +386,7 @@ window.SFAnalyzr = (function () {
       var singNote = medianF0 > 0 ? noteName(medianF0) : '—';
 
       onProgress(90, '生成提示词…');
-      var featIn = { bpm: bestBpm, centroid: centroid, lowPct: pct(bands.low), highPct: pct(bands.high), vocalRatio: vocalRatio, rmsDb: rmsDb, dynDb: dynDb, beatStrength: beatStrength, onsetDensity: onsetDensity, voicedRatio: voicedRatio, medianF0: medianF0, rangeSemi: rangeSemi, chordRate: chordRate, chorusLift: chorusLift, sectionMoves: sectionMoves };
+      var featIn = { bpm: bestBpm, centroid: centroid, lowPct: pct(bands.low), highPct: pct(bands.high), vocalRatio: vocalRatio, rmsDb: rmsDb, dynDb: dynDb, beatStrength: beatStrength, onsetDensity: onsetDensity, voicedRatio: voicedRatio, medianF0: medianF0, flipsPerMin: flipsPerMin, falsettoPct: falsettoPct, offbeatPct: offbeatPct, rangeSemi: rangeSemi, chordRate: chordRate, chorusLift: chorusLift, sectionMoves: sectionMoves };
       return {
         bpm: Math.round(bestBpm),
         key: keyName,
@@ -323,6 +407,9 @@ window.SFAnalyzr = (function () {
         voicedRatio: Math.round(voicedRatio * 100),
         singNote: singNote,
         vocalRangeSemi: rangeSemi,
+        flipsPerMin: flipsPerMin,
+        falsettoPct: falsettoPct,
+        offbeatPct: offbeatPct,
         chordRate: Math.round(chordRate * 100) / 100,
         chorusLift: chorusLift,
         features: interpret(featIn)
@@ -387,14 +474,17 @@ window.SFAnalyzr = (function () {
     if (f.voicedRatio < 0.08 || (f.vocalRatio < 0.3 && f.rangeSemi < 3)) {
       g.vocalStyle = 'no prominent lead vocal — instrumental track, melody carried by instruments';
     } else {
-      var reg = f.medianF0 < 140 ? 'deep male vocal register' : f.medianF0 < 190 ? 'male vocal register'
+      var reg = f.medianF0 < 140 ? 'deep male vocal register' : f.medianF0 < 200 ? 'male vocal register'
         : f.medianF0 < 300 ? 'female vocal register' : 'high, bright female vocal register';
       var deliv;
       if (f.rangeSemi < 4 && f.onsetDensity > 4) deliv = 'rap-like talk-sing flow, rhythm-driven phrasing';
       else if (f.rangeSemi < 4) deliv = 'narrow-range, intimate close-mic delivery';
       else if (f.rangeSemi > 12) deliv = 'wide-range expressive vocals with dynamic leaps';
       else deliv = 'smooth melodic delivery with a moderate range';
-      g.vocalStyle = reg + ', ' + deliv + ', lead vocal present in ~' + Math.round(f.voicedRatio * 100) + '% of the song';
+      var tech = '';
+      if (f.flipsPerMin >= 4) tech += ', frequent vocal flips/riffs (register switches ~' + f.flipsPerMin + '/min)';
+      if (f.falsettoPct >= 15) tech += ', uses falsetto/head-voice passages in the upper register';
+      g.vocalStyle = reg + ', ' + deliv + tech + ', lead vocal present in ~' + Math.round(f.voicedRatio * 100) + '% of the song';
     }
     /* 和声复杂度 */
     if (f.chordRate < 0.3) g.harmony = 'simple static chord loop, few harmonic changes';
@@ -415,7 +505,7 @@ window.SFAnalyzr = (function () {
     var lines = [
       'Genre: ' + F.genre + ', ' + F.energy,
       'Tempo: ' + r.bpm + ' BPM (exact), ' + F.tempo,
-      'Rhythm/Groove: ' + F.groove,
+      'Rhythm/Groove: ' + F.groove + ', ' + (r.offbeatPct >= 35 ? 'syncopated off-beat feel (' + r.offbeatPct + '% off-beat onsets)' : 'straight on-beat feel'),
       'Key: ' + r.key,
       'Mood: ' + F.mood,
       'Sound: ' + F.timbre + '; ' + F.bass,
@@ -488,7 +578,10 @@ window.SFAnalyzr = (function () {
         $('azDyn').textContent = r.dynamicRangeDb + ' dB';
         $('azBeat').textContent = r.beatStrength + '%';
         $('azGroove').textContent = r.onsetDensity + ' /s';
-        $('azSing').textContent = (r.voicedRatio > 8 ? r.singNote + ' · ' + r.vocalRangeSemi + ' st' : '器乐为主');
+        var singTxt = r.voicedRatio > 8 ? r.singNote + ' · ' + r.vocalRangeSemi + ' st' : '器乐为主';
+        if (r.falsettoPct >= 15) singTxt += ' · 假声';
+        if (r.flipsPerMin >= 4) singTxt += ' · 转音 ' + r.flipsPerMin + '/分';
+        $('azSing').textContent = singTxt;
         $('azChorus').textContent = r.chorusLift + ' dB';
         $('azGenre').textContent = r.features.genre;
         $('azResult').hidden = false;
