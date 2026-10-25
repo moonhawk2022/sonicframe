@@ -122,3 +122,13 @@ docs/product-review.md  产品评审：8 大类缺口 + 架构演进路线
 
 1. 打开 `index.html`（Ctrl+F5 强刷）重新导出一次，验证新成片
 2. 阅读 `docs/product-review.md` 决定第一版上线范围
+
+
+## R15（2026-10-25）：音频转 MP3 工具
+- 导航新增"工具"，打开转换弹窗（convDialog）
+- assets/convert.js：AudioContext 解码任意音频（m4a/wav/flac/ogg）→ 非 lame 支持采样率自动重采样 44100 → Int16 PCM → lamejs 分块编码，进度条分两段（解码 20% + 编码 80%）
+- assets/lame.min.js（1.2.1）本地引入；调用方式 new lamejs.Mp3Encoder(ch, sr, kbps)
+- 码率可选 128/192/320，产物命名"原名.mp3"，全本地不上传
+- 双语：EN 词典新增 navTools + cv* 键，动态提示走 SFI18N.lang 判断
+- E2E 验证：真实 WAV→MP3（fffbb4 帧头合法）、0 JS 报错、中英切换正常
+- 坑：lame.min.js 全局是函数 lamejs（实例上无 Mp3Encoder，需静态调用）

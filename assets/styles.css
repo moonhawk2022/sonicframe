@@ -874,3 +874,13 @@ body.is-exporting #btnTopExport { opacity: .5; pointer-events: none; }
 .switch--rights { margin: 8px 0 0; font-size: 11.5px; line-height: 1.55; color: var(--ink-2); align-items: flex-start; }
 .switch--rights input { flex: 0 0 auto; margin-top: 2px; }
 .switch--rights a { text-decoration: underline; }
+
+/* 转换工具弹窗 */
+.conv-dialog .dialog__lead { margin-bottom: 16px; }
+.cv-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.cv-select { height: 34px; border: 1px solid #dcdeeb; border-radius: 8px; padding: 0 10px; font-size: 13px; background: #fff; color: var(--ink); }
+.cv-fileinfo { font-size: 12.5px; color: var(--ink-2); min-height: 18px; margin-bottom: 12px; word-break: break-all; }
+.cv-progress { height: 8px; border-radius: 99px; background: #edeff7; overflow: hidden; margin-bottom: 10px; }
+.cv-progress__bar { height: 100%; width: 0%; border-radius: 99px; background: linear-gradient(90deg, var(--brand), var(--brand-ink)); transition: width .15s ease; }
+.cv-status { font-size: 12.5px; color: var(--ink-2); min-height: 18px; margin-bottom: 12px; }
+#cvDialog .primary-btn { text-decoration: none; }
