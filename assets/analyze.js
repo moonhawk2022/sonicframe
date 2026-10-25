@@ -153,6 +153,19 @@ window.SFAnalyzr = (function () {
       /* 八度仲裁：检测到过快（>135）时若慢一倍（2×lag）得分仍显著 → 取慢档；
          检测到过慢（<75）时若快一倍（lag/2）得分显著 → 取快档 */
       var bestBpm = 60 * fps / bestLag;
+      /* BPM 候选榜：最强的 3 个周期（供人工核验节拍层级） */
+      var candLags = [];
+      for (var cl = minLag; cl <= maxLag; cl++) candLags.push(cl);
+      candLags.sort(function (x, y) { return scores[y] - scores[x]; });
+      var bpmCandidates = [];
+      for (var ci = 0; ci < candLags.length && bpmCandidates.length < 3; ci++) {
+        var cb = Math.round(60 * fps / candLags[ci]);
+        while (cb < 70) cb *= 2;
+        while (cb > 180) cb /= 2;
+        cb = Math.round(cb);
+        var conf = bestScore > 0 ? Math.round(scores[candLags[ci]] / bestScore * 100) : 0;
+        if (!bpmCandidates.some(function (c) { return c.bpm === cb; })) bpmCandidates.push({ bpm: cb, confidence: conf });
+      }
       function scoreAt(l) { return (l >= minLag && l <= maxLag) ? scores[l] : 0; }
       if (bestBpm > 135 && scoreAt(bestLag * 2) >= bestScore * 0.4) { bestLag = bestLag * 2; bestBpm = 60 * fps / bestLag; }
       else if (bestBpm < 75 && scoreAt(Math.round(bestLag / 2)) >= bestScore * 0.4) { bestLag = Math.round(bestLag / 2); bestBpm = 60 * fps / bestLag; }
@@ -404,6 +417,7 @@ window.SFAnalyzr = (function () {
         dynamicRangeDb: Math.round(dynDb),
         beatStrength: beatStrength,
         onsetDensity: Math.round(onsetDensity * 10) / 10,
+        bpmCandidates: bpmCandidates,
         voicedRatio: Math.round(voicedRatio * 100),
         singNote: singNote,
         vocalRangeSemi: rangeSemi,
@@ -571,7 +585,15 @@ window.SFAnalyzr = (function () {
         $('azProgress').hidden = true;
         $('azBar').style.width = '0%';
         $('azStatus').textContent = '';
+        var candTxt = '';
+        if (r.bpmCandidates && r.bpmCandidates.length > 1) {
+          candTxt = r.bpmCandidates.filter(function (c) { return c.bpm !== r.bpm; })
+            .slice(0, 2).map(function (c) { return c.bpm; }).join(' / ');
+        }
         $('azBpm').textContent = r.bpm + ' BPM';
+        var candEl = $('azBpmCand');
+        if (candEl) candEl.textContent = candTxt ? ('\u5019\u9009 ' + candTxt) : '';
+        $('azBpm').title = candTxt ? ('\u5176\u4ed6\u5019\u9009\uff1a' + candTxt + ' BPM\uff08\u8282\u62cd\u5c42\u7ea7\u6b67\u4e49\u65f6\u53ef\u53c2\u8003\uff09') : '';
         $('azKey').textContent = r.key;
         $('azBright').textContent = r.brightnessHz + ' Hz';
         $('azVocal').textContent = Math.round(r.vocalRatio * 100) + '%';
