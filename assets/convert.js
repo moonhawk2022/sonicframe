@@ -95,23 +95,31 @@ window.SFConvert = (function () {
       .then(function (buffer) {
         var pcm = toInt16(buffer);
         var encoder = new lamejs.Mp3Encoder(pcm.channels, buffer.sampleRate, kbps);
+        /* 关键：pcm.data 是交错排列（L,R,L,R…），必须解包成每声道独立数组
+           再喂给 lamejs（encodeBuffer(left, right)），否则左右串音、声音失真 */
+        var chCount = pcm.channels;
+        var samples = pcm.data.length / chCount | 0;
+        var L = new Int16Array(samples);
+        var R = chCount > 1 ? new Int16Array(samples) : null;
+        for (var i = 0; i < samples; i++) {
+          L[i] = pcm.data[i * chCount];
+          if (R) R[i] = pcm.data[i * chCount + 1];
+        }
         var blockSize = 1152 * 20; // 每块 ~0.5s，兼顾速度与响应
         var chunks = [];
-        var total = pcm.data.length;
         var pos = 0;
 
         return new Promise(function (resolve, reject) {
           function step() {
             try {
-              var end = Math.min(pos + blockSize * pcm.channels, total);
-              var slice = pcm.data.subarray(pos, end);
+              var end = Math.min(pos + blockSize, samples);
               var buf;
-              if (pcm.channels === 1) buf = encoder.encodeBuffer(slice);
-              else buf = encoder.encodeBuffer(slice.subarray(0, slice.length >> 1), slice.subarray(slice.length >> 1));
+              if (chCount === 1) buf = encoder.encodeBuffer(L.subarray(pos, end));
+              else buf = encoder.encodeBuffer(L.subarray(pos, end), R.subarray(pos, end));
               if (buf.length > 0) chunks.push(new Int8Array(buf));
               pos = end;
-              onProgress('encode', Math.round(pos / total * 100));
-              if (pos < total) {
+              onProgress('encode', Math.round(pos / samples * 100));
+              if (pos < samples) {
                 setTimeout(step, 0);
               } else {
                 var tail = encoder.flush();
