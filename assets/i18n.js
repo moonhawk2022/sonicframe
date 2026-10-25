@@ -18,7 +18,7 @@ window.SFI18N = (function () {
     navStyle: 'Style',
     navExport: 'Export',
     navFaq: 'FAQ',
-    navTools: 'Tools',
+    navTools: 'Convert MP3',
 
     /* 转换工具弹窗 */
     cvTitle: 'Convert to MP3',

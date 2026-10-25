@@ -27,7 +27,7 @@
     <a href="#step-lyrics" data-i18n="navLyrics">歌词</a>
     <a href="#step-style" data-i18n="navStyle">画面</a>
     <a href="#export-bar" data-i18n="navExport">导出</a>
-    <a href="#" id="navTools" data-i18n="navTools">工具</a>
+    <a href="#step-convert" data-i18n="navTools">转换 MP3</a>
     <a href="#" id="navFaq" data-i18n="navFaq">常见问题</a>
   </nav>
 
@@ -261,6 +261,33 @@
       </div>
     </div>
   </section>
+
+  <!-- 音频转 MP3 -->
+  <section class="step" id="step-convert">
+    <div class="step__badge" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h13l-3-3M20 17H7l3 3"/></svg></div>
+    <div class="step__body">
+      <h2 data-i18n="cvTitle">音频转 MP3</h2>
+      <p class="step__desc" data-i18n="cvDesc">把 M4A / WAV / FLAC / OGG 等格式转换成 MP3 并下载，全程在浏览器本地完成，文件不会上传。</p>
+      <input type="file" id="cvFile" accept="audio/*,.m4a,.wav,.flac,.ogg,.aac" hidden>
+      <div class="cv-card">
+        <div class="cv-row">
+          <button class="ghost-btn" id="cvPick" type="button" data-i18n="cvPick">选择音频文件</button>
+          <select id="cvKbps" class="cv-select" aria-label="音质">
+            <option value="128" data-i18n="cvQ128">128 kbps（较小）</option>
+            <option value="192" selected data-i18n="cvQ192">192 kbps（推荐）</option>
+            <option value="320" data-i18n="cvQ320">320 kbps（高音质）</option>
+          </select>
+        </div>
+        <div class="cv-fileinfo" id="cvFileInfo" data-i18n="cvNoFile">未选择文件</div>
+        <div class="cv-progress" id="cvProgress" hidden><div class="cv-progress__bar" id="cvBar"></div></div>
+        <div class="cv-status" id="cvStatus"></div>
+        <div class="cv-row">
+          <button class="primary-btn" id="cvStart" type="button" disabled data-i18n="cvStart">开始转换</button>
+          <a class="primary-btn" id="cvDownload" download="converted.mp3" hidden data-i18n="cvDownload">下载 MP3</a>
+        </div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer class="footer" data-page-node-id="27V0sjm9BZkdt43rByoCm3">
@@ -288,28 +315,6 @@
   </dl>
 </dialog>
 
-<!-- 音频转 MP3 工具 -->
-<dialog id="convDialog" class="dialog">
-  <form method="dialog"><button class="dialog__close" aria-label="关闭" type="button">×</button></form>
-  <h2 data-i18n="cvTitle">音频转 MP3</h2>
-  <p class="dialog__lead" data-i18n="cvDesc">把 M4A / WAV / FLAC / OGG 等格式转换成 MP3，全程在浏览器本地完成，文件不会上传。</p>
-  <input type="file" id="cvFile" accept="audio/*,.m4a,.wav,.flac,.ogg,.aac" hidden>
-  <div class="cv-row">
-    <button class="ghost-btn" id="cvPick" type="button" data-i18n="cvPick">选择音频文件</button>
-    <select id="cvKbps" class="cv-select" aria-label="音质">
-      <option value="128" data-i18n="cvQ128">128 kbps（较小）</option>
-      <option value="192" selected data-i18n="cvQ192">192 kbps（推荐）</option>
-      <option value="320" data-i18n="cvQ320">320 kbps（高音质）</option>
-    </select>
-  </div>
-  <div class="cv-fileinfo" id="cvFileInfo" data-i18n="cvNoFile">未选择文件</div>
-  <div class="cv-progress" id="cvProgress" hidden><div class="cv-progress__bar" id="cvBar"></div></div>
-  <div class="cv-status" id="cvStatus"></div>
-  <div class="cv-row">
-    <button class="primary-btn" id="cvStart" type="button" disabled data-i18n="cvStart">开始转换</button>
-    <a class="primary-btn" id="cvDownload" download="converted.mp3" hidden data-i18n="cvDownload">下载 MP3</a>
-  </div>
-</dialog>
 
 
 <div class="toast" id="toast" role="status" aria-live="polite" data-page-node-id="vRtEkCrIGcY5iO5rb76RvA"></div>

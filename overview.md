@@ -131,4 +131,5 @@ docs/product-review.md  产品评审：8 大类缺口 + 架构演进路线
 - 码率可选 128/192/320，产物命名"原名.mp3"，全本地不上传
 - 双语：EN 词典新增 navTools + cv* 键，动态提示走 SFI18N.lang 判断
 - E2E 验证：真实 WAV→MP3（fffbb4 帧头合法）、0 JS 报错、中英切换正常
+- R15b（用户复述需求）：由弹窗改为页面独立分区 #step-convert（与歌曲/歌词/画面并列），导航"转换 MP3"锚点直达，转换完成直接显示"下载 MP3"按钮
 - 坑：lame.min.js 全局是函数 lamejs（实例上无 Mp3Encoder，需静态调用）

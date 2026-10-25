@@ -165,11 +165,7 @@ window.SFConvert = (function () {
   function baseName(name) { return name.slice(0, name.lastIndexOf('.') > 0 ? name.lastIndexOf('.') : name.length); }
 
   function init() {
-    var dlg = $('convDialog');
-    if (!dlg) return;
-
-    var navTools = $('navTools');
-    if (navTools) navTools.addEventListener('click', function (e) { e.preventDefault(); dlg.showModal(); });
+    if (!$('step-convert') || !$('cvFile')) return;
 
     var pick = $('cvPick'), fileInput = $('cvFile');
     if (pick && fileInput) pick.addEventListener('click', function () { fileInput.click(); });
