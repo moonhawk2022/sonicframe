@@ -138,3 +138,14 @@ docs/product-review.md  产品评审：8 大类缺口 + 架构演进路线
 - 根因：交错 PCM（L,R,L,R…）被按前后对半硬拆喂给 lamejs，左右声道互相串音 → 听不清
 - 修复：先解包为每声道独立 Int16Array，再 encodeBuffer(L, R)；进度/循环改按"每声道样本数"推进
 - 回归验证：L=440Hz/R=880Hz 测试音转换→解码→DFT：L440=0.2425、R880=0.2425、串频≈0.0001（声道正确、幅度无损）
+
+
+## R16（2026-10-25）：歌曲风格分析 → AI 音乐提示词
+- 新分区 #step-analyze（导航"仿写提示词"/Style Prompt），assets/analyze.js
+- 特征提取（纯前端 Web Audio + 自写 FFT）：
+  · BPM：能量包络自相关（60–180 搜索窗，折叠 70–180）
+  · 调性：4096 点 FFT 色度图 × Krumhansl 大/小调轮廓相关（关系大小调等价为正常现象）
+  · 音色：频谱质心；低/中/高频占比；人声感 300–3500Hz 占比；动态范围（10/90 分位包络）
+- 特征映射为风格描述（tempo/timbre/bass/vocal/dynamics/mood/genre 猜测）
+- 生成 Suno 风格英文提示词（Genre/Tempo/Key/Mood/Sound/Vocals/Dynamics/Production），一键复制
+- 验证：合成 120BPM+C 大调测试音，Node 与无头浏览器双端 BPM=120 精确命中、调性识别正确（关系调等价）、特征卡与提示词正常生成，0 JS 报错

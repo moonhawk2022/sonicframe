@@ -28,6 +28,7 @@
     <a href="#step-style" data-i18n="navStyle">画面</a>
     <a href="#export-bar" data-i18n="navExport">导出</a>
     <a href="#step-convert" data-i18n="navTools">转换 MP3</a>
+    <a href="#step-analyze" data-i18n="navAnalyze">仿写提示词</a>
     <a href="#" id="navFaq" data-i18n="navFaq">常见问题</a>
   </nav>
 
@@ -288,6 +289,39 @@
       </div>
     </div>
   </section>
+
+  <!-- 歌曲特征分析 → AI 提示词 -->
+  <section class="step" id="step-analyze">
+    <div class="step__badge" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg></div>
+    <div class="step__body">
+      <h2 data-i18n="azTitle">歌曲风格分析 → AI 音乐提示词</h2>
+      <p class="step__desc" data-i18n="azDesc">上传 MP3 / WAV 等歌曲，本地提取节奏、调性、音色、人声等特征，一键生成 AI 音乐工具（Suno 等）可用的风格提示词，用来创作相似风格的新歌。全程浏览器内完成，文件不上传。</p>
+      <input type="file" id="azFile" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg" hidden>
+      <div class="cv-card">
+        <div class="cv-row">
+          <button class="ghost-btn" id="azPick" type="button" data-i18n="azPick">选择歌曲文件</button>
+        </div>
+        <div class="cv-fileinfo" id="azFileInfo" data-i18n="azNoFile">未选择文件</div>
+        <div class="cv-progress" id="azProgress" hidden><div class="cv-progress__bar" id="azBar"></div></div>
+        <div class="cv-status" id="azStatus"></div>
+        <div class="az-grid" id="azResult" hidden>
+          <div class="az-item"><span data-i18n="azBpm">节奏</span><b id="azBpm">—</b></div>
+          <div class="az-item"><span data-i18n="azKey">调性</span><b id="azKey">—</b></div>
+          <div class="az-item"><span data-i18n="azBright">音色亮度</span><b id="azBright">—</b></div>
+          <div class="az-item"><span data-i18n="azVocal">人声占比</span><b id="azVocal">—</b></div>
+          <div class="az-item"><span data-i18n="azDyn">动态范围</span><b id="azDyn">—</b></div>
+          <div class="az-item"><span data-i18n="azGenre">风格推测</span><b id="azGenre">—</b></div>
+        </div>
+        <div class="az-prompt-wrap" id="azPromptWrap" hidden>
+          <div class="az-prompt-head">
+            <span data-i18n="azPromptTitle">AI 音乐提示词（复制到 Suno 等工具）</span>
+            <button class="ghost-btn" id="azCopy" type="button" data-i18n="azCopy">复制</button>
+          </div>
+          <textarea id="azPrompt" class="az-prompt" rows="8" readonly></textarea>
+        </div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer class="footer" data-page-node-id="27V0sjm9BZkdt43rByoCm3">
@@ -327,6 +361,7 @@
 <script src="assets/sfexport.js"></script>
 <script src="assets/lame.min.js"></script>
 <script src="assets/convert.js"></script>
+<script src="assets/analyze.js"></script>
 <script src="assets/i18n.js"></script>
 <script src="assets/app.js"></script>
 </body>

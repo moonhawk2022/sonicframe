@@ -19,6 +19,26 @@ window.SFI18N = (function () {
     navExport: 'Export',
     navFaq: 'FAQ',
     navTools: 'Convert MP3',
+    navAnalyze: 'Style Prompt',
+
+    /* 歌曲分析 */
+    azTitle: 'Song Style Analysis → AI Music Prompt',
+    azDesc: 'Upload an MP3/WAV song — we extract tempo, key, timbre and vocal characteristics locally, then generate a style prompt for AI music tools like Suno to create a similar-style new song. Files never leave your device.',
+    azPick: 'Choose a song file',
+    azNoFile: 'No file selected',
+    azBpm: 'Tempo',
+    azKey: 'Key',
+    azBright: 'Brightness',
+    azVocal: 'Vocal presence',
+    azDyn: 'Dynamics',
+    azGenre: 'Style guess',
+    azPromptTitle: 'AI music prompt (paste into Suno etc.)',
+    azCopy: 'Copy',
+    azCopied: 'Copied!',
+    azAnalyzing: 'Analyzing…',
+    azNeedFile: 'Please choose a song file first',
+    azFail: 'Analysis failed: {msg}',
+    azFileInfo: '{name} · {size} · {dur}s', 
 
     /* 转换工具弹窗 */
     cvTitle: 'Convert to MP3',
