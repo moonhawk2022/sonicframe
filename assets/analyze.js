@@ -71,10 +71,19 @@ window.SFAnalyzr = (function () {
         var d = buffer.getChannelData(c);
         for (var i = 0; i < n; i++) mono[i] += d[i] / chs;
       }
+      /* 人声主导轨（mid）：立体声取 (L+R)/2，居中的人声/贝斯保留，两侧乐器衰减 */
+      var mid = mono;
+      if (chs >= 2) {
+        var Ld = buffer.getChannelData(0), Rd = buffer.getChannelData(1);
+        var midBuf = new Float32Array(n);
+        for (var mi = 0; mi < n; mi++) midBuf[mi] = (Ld[mi] + Rd[mi]) / 2;
+        mid = midBuf;
+      }
       /* 最多分析 120 秒（性能保护），取中段 */
       var maxLen = Math.min(n, sr * 120);
       var start = Math.max(0, (n - maxLen) >> 1);
       var sig = mono.subarray(start, start + maxLen);
+      var sigMid = mid.subarray(start, start + maxLen);
       var dur = buffer.duration;
 
       /* --- 1. 能量包络（供动态范围用） --- */
@@ -159,20 +168,51 @@ window.SFAnalyzr = (function () {
       var hann = new Float32Array(fftN);
       for (var h = 0; h < fftN; h++) hann[h] = 0.5 - 0.5 * Math.cos(2 * Math.PI * h / (fftN - 1));
       var re = new Float32Array(fftN), im = new Float32Array(fftN);
+      var f0s = [];            // 每帧主唱基频估计（80–1000Hz 峰）
+      var chromaHist = [];     // 每帧色度（和声变化率用）
+      var chromaSpan = 0;      // 色度帧覆盖时长（秒）
       for (var fr = 0; fr < frameCount; fr++) {
         var o = fr * hop * 8; // 跳取样帧提速
         if (o + fftN > sig.length) break;
-        for (var k2 = 0; k2 < fftN; k2++) { re[k2] = sig[o + k2] * hann[k2]; im[k2] = 0; }
+        for (var k2 = 0; k2 < fftN; k2++) { re[k2] = sigMid[o + k2] * hann[k2]; im[k2] = 0; }
         fft(re, im);
+        var f0Best = 0, f0Max = 0, f0Sum = 0, f0Cnt = 0;
+        var frameChroma = new Float64Array(12);
         for (var b = 2; b < fftN / 2; b++) {
           var freq = b * sr / fftN;
-          if (freq < 65 || freq > 2100) continue;
-          var midi = 69 + 12 * Math.log2(freq / 440);
-          var pc = ((Math.round(midi) % 12) + 12) % 12;
           var mag = Math.hypot(re[b], im[b]);
-          chroma[pc] += mag;
+          if (freq >= 65 && freq <= 2100) {
+            var midi = 69 + 12 * Math.log2(freq / 440);
+            var pc = ((Math.round(midi) % 12) + 12) % 12;
+            chroma[pc] += mag;
+            frameChroma[pc] += mag;
+          }
+          /* 主唱音高估计：80–1000Hz 内最强谱峰 */
+          if (freq >= 80 && freq <= 1200) {
+            if (mag > f0Max) { f0Max = mag; f0Best = freq; }
+            f0Sum += mag; f0Cnt++;
+          }
         }
+        /* 峰显著度 > 5× 均值才算有明确音高（人声/主奏乐器） */
+        if (f0Best > 0 && f0Cnt > 0 && f0Max > (f0Sum / f0Cnt) * 5) f0s.push(f0Best);
+        chromaHist.push(frameChroma);
+        chromaSpan += fftN / sr;
       }
+      /* 和声变化率：相邻帧色度余弦距离 > 0.2 记一次和弦/段落变化 */
+      var chordJumps = 0;
+      var chordSteps = 8; // 比较间隔 ~0.75s，抑制帧间漂移误报
+      for (var ch = chordSteps; ch < chromaHist.length; ch++) {
+        var dot = 0, na = 0, nb = 0;
+        for (var q = 0; q < 12; q++) {
+          dot += chromaHist[ch - chordSteps][q] * chromaHist[ch][q];
+          na += chromaHist[ch - chordSteps][q] * chromaHist[ch - chordSteps][q];
+          nb += chromaHist[ch][q] * chromaHist[ch][q];
+        }
+        var sim = dot / (Math.sqrt(na * nb) || 1e-9);
+        if (1 - sim > 0.45) chordJumps++;
+      }
+      var chordSpanSec = chromaSpan * (chromaHist.length - chordSteps) / (chromaHist.length || 1);
+      var chordRate = chordSpanSec > 0 ? chordJumps / chordSpanSec : 0; // 次/秒
       /* 归一化色度 */
       var cMax = 0; for (var cc = 0; cc < 12; cc++) if (chroma[cc] > cMax) cMax = chroma[cc];
       if (cMax > 0) for (var cc2 = 0; cc2 < 12; cc2++) chroma[cc2] /= cMax;
@@ -226,8 +266,43 @@ window.SFAnalyzr = (function () {
       var loud = envSorted[Math.floor(envSorted.length * 0.9)] || 1e-6;
       var dynDb = 20 * Math.log10(loud / quiet);
 
+      /* --- 5. 主副歌结构：2 秒窗响度分层 --- */
+      var wLen = sr * 2, wCount = Math.floor(sig.length / wLen);
+      var wRms = [];
+      for (var w = 0; w < wCount; w++) {
+        var ws = 0;
+        for (var wj = 0; wj < wLen; wj += 4) { var wv = sig[w * wLen + wj]; ws += wv * wv; }
+        wRms.push(Math.sqrt(ws / (wLen / 4)));
+      }
+      var wSorted = wRms.slice().sort(function (x, y) { return x - y; });
+      var wQuiet = wSorted[Math.floor(wSorted.length * 0.35)] || 1e-6;
+      var wLoud = wSorted[Math.floor(wSorted.length * 0.75)] || 1e-6;
+      var chorusLift = Math.round(20 * Math.log10(wLoud / wQuiet));
+      var wMed = wSorted[Math.floor(wSorted.length * 0.5)] || 0;
+      var sectionMoves = 0;
+      for (var w2 = 1; w2 < wRms.length; w2++) {
+        if ((wRms[w2 - 1] > wMed) !== (wRms[w2] > wMed)) sectionMoves++;
+      }
+      var sectionSpanSec = wCount * 2;
+
+      /* --- 6. 演唱特征（基于 mid 人声轨音高统计） --- */
+      var voicedRatio = frameCount > 0 ? f0s.length / frameCount : 0;
+      var medianF0 = 0, rangeSemi = 0;
+      if (f0s.length > 4) {
+        var f0sorted = f0s.slice().sort(function (x, y) { return x - y; });
+        medianF0 = f0sorted[Math.floor(f0sorted.length * 0.5)];
+        var p25 = f0sorted[Math.floor(f0sorted.length * 0.25)];
+        var p75 = f0sorted[Math.floor(f0sorted.length * 0.75)];
+        rangeSemi = p25 > 0 ? Math.round(12 * Math.log2(p75 / p25)) : 0;
+      }
+      function noteName(fq) {
+        var midi = Math.round(69 + 12 * Math.log2(fq / 440));
+        return NOTE_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+      }
+      var singNote = medianF0 > 0 ? noteName(medianF0) : '—';
+
       onProgress(90, '生成提示词…');
-      var featIn = { bpm: bestBpm, centroid: centroid, lowPct: pct(bands.low), highPct: pct(bands.high), vocalRatio: vocalRatio, rmsDb: rmsDb, dynDb: dynDb, beatStrength: beatStrength, onsetDensity: onsetDensity };
+      var featIn = { bpm: bestBpm, centroid: centroid, lowPct: pct(bands.low), highPct: pct(bands.high), vocalRatio: vocalRatio, rmsDb: rmsDb, dynDb: dynDb, beatStrength: beatStrength, onsetDensity: onsetDensity, voicedRatio: voicedRatio, medianF0: medianF0, rangeSemi: rangeSemi, chordRate: chordRate, chorusLift: chorusLift, sectionMoves: sectionMoves };
       return {
         bpm: Math.round(bestBpm),
         key: keyName,
@@ -245,6 +320,11 @@ window.SFAnalyzr = (function () {
         dynamicRangeDb: Math.round(dynDb),
         beatStrength: beatStrength,
         onsetDensity: Math.round(onsetDensity * 10) / 10,
+        voicedRatio: Math.round(voicedRatio * 100),
+        singNote: singNote,
+        vocalRangeSemi: rangeSemi,
+        chordRate: Math.round(chordRate * 100) / 100,
+        chorusLift: chorusLift,
         features: interpret(featIn)
       };
     });
@@ -303,6 +383,29 @@ window.SFAnalyzr = (function () {
     /* 情绪 */
     g.mood = f.centroid > 2200 && f.rmsDb > -20 ? 'uplifting and energetic'
       : f.centroid < 1400 ? 'mellow and introspective' : 'warm and emotional';
+    /* 演唱声部与唱法 */
+    if (f.voicedRatio < 0.08 || (f.vocalRatio < 0.3 && f.rangeSemi < 3)) {
+      g.vocalStyle = 'no prominent lead vocal — instrumental track, melody carried by instruments';
+    } else {
+      var reg = f.medianF0 < 140 ? 'deep male vocal register' : f.medianF0 < 190 ? 'male vocal register'
+        : f.medianF0 < 300 ? 'female vocal register' : 'high, bright female vocal register';
+      var deliv;
+      if (f.rangeSemi < 4 && f.onsetDensity > 4) deliv = 'rap-like talk-sing flow, rhythm-driven phrasing';
+      else if (f.rangeSemi < 4) deliv = 'narrow-range, intimate close-mic delivery';
+      else if (f.rangeSemi > 12) deliv = 'wide-range expressive vocals with dynamic leaps';
+      else deliv = 'smooth melodic delivery with a moderate range';
+      g.vocalStyle = reg + ', ' + deliv + ', lead vocal present in ~' + Math.round(f.voicedRatio * 100) + '% of the song';
+    }
+    /* 和声复杂度 */
+    if (f.chordRate < 0.3) g.harmony = 'simple static chord loop, few harmonic changes';
+    else if (f.chordRate < 0.8) g.harmony = 'moderate harmonic movement, chord changes every bar or two';
+    else g.harmony = 'rich, fast-changing harmony with frequent modulations';
+    /* 主副歌结构 */
+    var lift = f.chorusLift > 6 ? 'strong verse-chorus dynamic lift (chorus ~' + f.chorusLift + 'dB louder)'
+      : f.chorusLift > 3 ? 'moderate verse-chorus lift (chorus ~' + f.chorusLift + 'dB louder)'
+      : 'flat energy arrangement, little verse-chorus contrast';
+    var secs = f.sectionMoves >= 6 ? 'frequent section changes' : f.sectionMoves >= 2 ? 'classic verse/chorus sections' : 'long uniform sections';
+    g.arrangement = lift + ', ' + secs;
     return g;
   }
 
@@ -316,7 +419,10 @@ window.SFAnalyzr = (function () {
       'Key: ' + r.key,
       'Mood: ' + F.mood,
       'Sound: ' + F.timbre + '; ' + F.bass,
-      'Vocals: ' + F.vocal,
+      'Vocals: ' + F.vocalStyle,
+      'Vocal presence: ' + F.vocal,
+      'Harmony: ' + F.harmony,
+      'Arrangement: ' + F.arrangement,
       'Dynamics: ' + F.dynamics,
       'Production: modern mixing, clean master, in the same STYLE as the reference track only',
       'IMPORTANT: compose a brand-new ORIGINAL song in this style — do NOT reuse the melody, lyrics, chord progression or hooks of any existing song'
@@ -382,6 +488,8 @@ window.SFAnalyzr = (function () {
         $('azDyn').textContent = r.dynamicRangeDb + ' dB';
         $('azBeat').textContent = r.beatStrength + '%';
         $('azGroove').textContent = r.onsetDensity + ' /s';
+        $('azSing').textContent = (r.voicedRatio > 8 ? r.singNote + ' · ' + r.vocalRangeSemi + ' st' : '器乐为主');
+        $('azChorus').textContent = r.chorusLift + ' dB';
         $('azGenre').textContent = r.features.genre;
         $('azResult').hidden = false;
         $('azPrompt').value = window.SFAnalyzr.buildPrompt(r);

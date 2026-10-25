@@ -33,6 +33,8 @@ window.SFI18N = (function () {
     azDyn: 'Dynamics',
     azBeat: 'Beat strength',
     azGroove: 'Groove density',
+    azSing: 'Vocal character',
+    azChorus: 'Chorus lift',
     azGenre: 'Style guess',
     azPromptTitle: 'AI music prompt (paste into Suno etc.)',
     azCopy: 'Copy',
