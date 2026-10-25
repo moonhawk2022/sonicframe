@@ -77,7 +77,7 @@ window.SFAnalyzr = (function () {
       var sig = mono.subarray(start, start + maxLen);
       var dur = buffer.duration;
 
-      /* --- 1. 能量包络 → BPM --- */
+      /* --- 1. 能量包络（供动态范围用） --- */
       var hop = 512, win = 1024;
       var frames = Math.floor((sig.length - win) / hop);
       var env = new Float32Array(frames);
@@ -86,23 +86,67 @@ window.SFAnalyzr = (function () {
         for (var k = 0; k < win; k += 2) { var v = sig[off + k]; s += v * v; }
         env[f] = Math.sqrt(s / (win / 2));
       }
-      /* onset 包络 = 正向差分 */
-      var onset = new Float32Array(frames);
-      for (var f2 = 1; f2 < frames; f2++) onset[f2] = Math.max(0, env[f2] - env[f2 - 1]);
-      /* 去均值 */
-      var mean = 0; for (var m = 0; m < frames; m++) mean += onset[m];
-      mean /= frames;
-      for (var m2 = 0; m2 < frames; m2++) onset[m2] = Math.max(0, onset[m2] - mean);
-      /* 自相关找 60–180 BPM */
-      var fps = sr / hop;
-      var bestBpm = 0, bestScore = -1;
-      var minLag = Math.floor(fps * 60 / 180), maxLag = Math.ceil(fps * 60 / 60);
+
+      /* --- 1b. 多频段谱通量 onset → BPM / 律动（比振幅差分更能抓住旋律性律动） --- */
+      var fHop = 512, fWin = 1024;
+      var fFrames = Math.floor((sig.length - fWin) / fHop);
+      var hannF = new Float32Array(fWin);
+      for (var hf = 0; hf < fWin; hf++) hannF[hf] = 0.5 - 0.5 * Math.cos(2 * Math.PI * hf / (fWin - 1));
+      var freqBins = fWin / 2;
+      var prevMag = new Float32Array(freqBins);
+      var fluxRaw = new Float32Array(fFrames);
+      var reF = new Float32Array(fWin), imF = new Float32Array(fWin);
+      var fluxBinMax = Math.min(freqBins - 1, Math.floor(8000 * fWin / sr));
+      for (var ff = 0; ff < fFrames; ff++) {
+        var oF = ff * fHop;
+        for (var kf = 0; kf < fWin; kf++) { reF[kf] = sig[oF + kf] * hannF[kf]; imF[kf] = 0; }
+        fft(reF, imF);
+        var fl = 0;
+        for (var bf = 1; bf <= fluxBinMax; bf++) {
+          var mgf = Math.sqrt(reF[bf] * reF[bf] + imF[bf] * imF[bf]);
+          var df = mgf - prevMag[bf];
+          if (df > 0) fl += df;
+          prevMag[bf] = mgf;
+        }
+        fluxRaw[ff] = fl;
+      }
+      /* 3 帧平滑 + 去均值 */
+      var onset = new Float32Array(fFrames);
+      for (var sm = 1; sm < fFrames - 1; sm++) onset[sm] = (fluxRaw[sm - 1] + fluxRaw[sm] + fluxRaw[sm + 1]) / 3;
+      var mean = 0; for (var m = 0; m < fFrames; m++) mean += onset[m];
+      mean /= fFrames;
+      var onsetAvg = mean;
+      for (var m2 = 0; m2 < fFrames; m2++) onset[m2] = Math.max(0, onset[m2] - mean);
+
+      /* 律动密度：onset 峰计数（>2×均值且局部极大） */
+      var onsets = 0;
+      for (var pk = 1; pk < fFrames - 1; pk++) {
+        if (onset[pk] > onset[pk - 1] && onset[pk] >= onset[pk + 1] && onset[pk] > onsetAvg * 2) onsets++;
+      }
+      var analyzeDur = sig.length / sr;
+      var onsetDensity = onsets / analyzeDur; // 次/秒
+
+      /* 自相关找 60–180 BPM + 节拍强度（峰显著度） */
+      var fps = sr / fHop;
+      var minLag = Math.floor(fps * 60 / 200), maxLag = Math.ceil(fps * 60 / 60);
+      var scores = new Float32Array(maxLag + 2);
+      var bestLag = minLag, bestScore = -1, scoreSum = 0, scoreCnt = 0;
       for (var lag = minLag; lag <= maxLag; lag++) {
         var sc = 0;
-        for (var t = 0; t + lag < frames; t++) sc += onset[t] * onset[t + lag];
-        /* 轻微偏好整数倍附近的峰 */
-        if (sc > bestScore) { bestScore = sc; bestBpm = 60 * fps / lag; }
+        for (var t = 0; t + lag < fFrames; t++) sc += onset[t] * onset[t + lag];
+        scores[lag] = sc;
+        scoreSum += sc; scoreCnt++;
+        if (sc > bestScore) { bestScore = sc; bestLag = lag; }
       }
+      /* 节拍强度：自相关峰值 / 均值 → 1=无节拍感，越大越强 */
+      var beatRatio = scoreCnt > 0 ? bestScore / (scoreSum / scoreCnt) : 1;
+      var beatStrength = Math.max(0, Math.min(100, Math.round((beatRatio - 1) / 4 * 100)));
+      /* 八度仲裁：检测到过快（>135）时若慢一倍（2×lag）得分仍显著 → 取慢档；
+         检测到过慢（<75）时若快一倍（lag/2）得分显著 → 取快档 */
+      var bestBpm = 60 * fps / bestLag;
+      function scoreAt(l) { return (l >= minLag && l <= maxLag) ? scores[l] : 0; }
+      if (bestBpm > 135 && scoreAt(bestLag * 2) >= bestScore * 0.4) { bestLag = bestLag * 2; bestBpm = 60 * fps / bestLag; }
+      else if (bestBpm < 75 && scoreAt(Math.round(bestLag / 2)) >= bestScore * 0.4) { bestLag = Math.round(bestLag / 2); bestBpm = 60 * fps / bestLag; }
       /* 折叠到 70–180 常见区间 */
       while (bestBpm < 70) bestBpm *= 2;
       while (bestBpm > 180) bestBpm /= 2;
@@ -183,6 +227,7 @@ window.SFAnalyzr = (function () {
       var dynDb = 20 * Math.log10(loud / quiet);
 
       onProgress(90, '生成提示词…');
+      var featIn = { bpm: bestBpm, centroid: centroid, lowPct: pct(bands.low), highPct: pct(bands.high), vocalRatio: vocalRatio, rmsDb: rmsDb, dynDb: dynDb, beatStrength: beatStrength, onsetDensity: onsetDensity };
       return {
         bpm: Math.round(bestBpm),
         key: keyName,
@@ -198,36 +243,57 @@ window.SFAnalyzr = (function () {
         rmsDb: Math.round(rmsDb),
         peak: peak,
         dynamicRangeDb: Math.round(dynDb),
-        features: interpret({ bpm: bestBpm, centroid: centroid, lowPct: pct(bands.low), highPct: pct(bands.high), vocalRatio: vocalRatio, rmsDb: rmsDb, dynDb: dynDb })
+        beatStrength: beatStrength,
+        onsetDensity: Math.round(onsetDensity * 10) / 10,
+        features: interpret(featIn)
       };
     });
   }
 
-  /* ---------- 特征 → 风格描述 ---------- */
+  /* ---------- 特征 → 风格描述（细粒度分桶，提高区分度） ---------- */
   function interpret(f) {
     var g = {};
-    /* 节奏感 */
-    if (f.bpm < 85) g.tempo = 'slow, laid-back groove';
-    else if (f.bpm < 115) g.tempo = 'mid-tempo, steady groove';
+    /* 节奏感：BPM 分 6 档 */
+    if (f.bpm < 75) g.tempo = 'very slow, floating pace';
+    else if (f.bpm < 90) g.tempo = 'slow, laid-back groove';
+    else if (f.bpm < 108) g.tempo = 'relaxed mid-tempo groove';
+    else if (f.bpm < 125) g.tempo = 'steady mid-tempo pulse';
     else if (f.bpm < 145) g.tempo = 'energetic, driving beat';
     else g.tempo = 'fast, urgent rhythm';
-    /* 音色亮度 */
-    if (f.centroid < 1200) g.timbre = 'warm, dark timbre with deep lows';
-    else if (f.centroid < 2600) g.timbre = 'balanced, natural timbre';
-    else g.timbre = 'bright, airy timbre with crisp highs';
-    /* 配比 */
-    if (f.lowPct > 0.5) g.bass = 'bass-heavy mix with prominent low end';
-    else if (f.highPct > 0.25) g.bass = 'shiny mix with sparkling highs';
-    else g.bass = 'well-balanced mix';
+    /* 律动：节拍强度 × 律动密度 */
+    if (f.beatStrength >= 60) {
+      g.groove = f.onsetDensity >= 5 ? 'punchy, densely layered percussion with a strong four-on-the-floor feel'
+        : f.onsetDensity >= 2.5 ? 'clear steady backbeat, tight and danceable'
+        : 'bold sparse hits with heavy space between beats';
+    } else if (f.beatStrength >= 30) {
+      g.groove = f.onsetDensity >= 5 ? 'flowing busy rhythm with light syncopation'
+        : 'moderate groove, rhythm felt more than hammered';
+    } else {
+      g.groove = 'soft rhythmic pulse, ambient and floating, drums barely present';
+    }
+    /* 音色亮度：分 5 档 */
+    if (f.centroid < 900) g.timbre = 'deep, dark, bass-dominated timbre';
+    else if (f.centroid < 1500) g.timbre = 'warm, mellow timbre';
+    else if (f.centroid < 2300) g.timbre = 'balanced, natural timbre';
+    else if (f.centroid < 3200) g.timbre = 'bright, open timbre';
+    else g.timbre = 'very bright, airy, crystalline timbre';
+    /* 配比：用量化数值组合 */
+    var lp = Math.round(f.lowPct * 100), hp = Math.round(f.highPct * 100);
+    if (f.lowPct > 0.5) g.bass = lp + '% of the energy in the low end — sub-heavy mix';
+    else if (f.highPct > 0.25) g.bass = hp + '% energy in highs — shiny mix with sparkling highs';
+    else g.bass = 'balanced spectrum (~' + lp + '% lows / ~' + hp + '% highs)';
     /* 人声感 */
-    if (f.vocalRatio > 0.55) g.vocal = 'expressive lead vocals sitting on top of the mix';
-    else if (f.vocalRatio > 0.4) g.vocal = 'vocal-forward but blended with instruments';
-    else g.vocal = 'instrumental-leaning texture, vocals used sparingly';
+    var vp = Math.round(f.vocalRatio * 100);
+    if (f.vocalRatio > 0.55) g.vocal = 'expressive lead vocals dominating the mix (vocal band ~' + vp + '%)';
+    else if (f.vocalRatio > 0.4) g.vocal = 'vocal-forward but blended with instruments (vocal band ~' + vp + '%)';
+    else g.vocal = 'instrumental-leaning texture, vocals sparse (vocal band ~' + vp + '%)';
     /* 力度 */
     if (f.dynDb > 14) g.dynamics = 'wide dynamics, quiet-loud contrast';
     else if (f.dynDb > 8) g.dynamics = 'moderate dynamics';
     else g.dynamics = 'dense, compressed, radio-style loudness';
-    /* 粗略流派猜测 */
+    /* 能量等级 */
+    g.energy = f.rmsDb > -15 ? 'high energy' : f.rmsDb > -23 ? 'medium energy' : 'low energy, intimate';
+    /* 粗略流派猜测：加入律动与能量维度 */
     if (f.bpm >= 120 && f.bpm < 135 && f.lowPct > 0.45) g.genre = 'dance / electronic-pop';
     else if (f.bpm >= 70 && f.bpm < 100 && f.vocalRatio > 0.5) g.genre = 'R&B / soul ballad';
     else if (f.bpm >= 100 && f.bpm < 130 && f.vocalRatio > 0.45) g.genre = 'pop';
@@ -240,18 +306,20 @@ window.SFAnalyzr = (function () {
     return g;
   }
 
-  /* ---------- 特征 → Suno 风格英文提示词 ---------- */
+  /* ---------- 特征 → Suno 风格英文提示词（含量化特征与防雷同约束） ---------- */
   function buildPrompt(r) {
     var F = r.features;
     var lines = [
-      'Genre: ' + F.genre,
-      'Tempo: ~' + r.bpm + ' BPM, ' + F.tempo,
+      'Genre: ' + F.genre + ', ' + F.energy,
+      'Tempo: ' + r.bpm + ' BPM (exact), ' + F.tempo,
+      'Rhythm/Groove: ' + F.groove,
       'Key: ' + r.key,
       'Mood: ' + F.mood,
-      'Sound: ' + F.timbre + ', ' + F.bass,
+      'Sound: ' + F.timbre + '; ' + F.bass,
       'Vocals: ' + F.vocal,
       'Dynamics: ' + F.dynamics,
-      'Production: modern mixing, clean master, similar in style to the reference song'
+      'Production: modern mixing, clean master, in the same STYLE as the reference track only',
+      'IMPORTANT: compose a brand-new ORIGINAL song in this style — do NOT reuse the melody, lyrics, chord progression or hooks of any existing song'
     ];
     return lines.join('\n');
   }
@@ -312,6 +380,8 @@ window.SFAnalyzr = (function () {
         $('azBright').textContent = r.brightnessHz + ' Hz';
         $('azVocal').textContent = Math.round(r.vocalRatio * 100) + '%';
         $('azDyn').textContent = r.dynamicRangeDb + ' dB';
+        $('azBeat').textContent = r.beatStrength + '%';
+        $('azGroove').textContent = r.onsetDensity + ' /s';
         $('azGenre').textContent = r.features.genre;
         $('azResult').hidden = false;
         $('azPrompt').value = window.SFAnalyzr.buildPrompt(r);
